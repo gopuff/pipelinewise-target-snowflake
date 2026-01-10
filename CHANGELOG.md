@@ -1,3 +1,13 @@
+2.4.0 (2026-01-10)
+-------------------
+
+*Changes*
+- Add support for Python 3.10, 3.11, and 3.12
+- Update dependencies for Python 3.12 compatibility:
+    - snowflake-connector-python[pandas]: Changed from ==3.0.4 to >=3.0.4,<4.0
+    - boto3: Changed from ==1.28.20 to >=1.28.20
+    - pylint: Changed from ==2.12.* to >=2.17.0,<4.0
+
 2.3.0 (2023-08-08)
 -------------------
 
