@@ -1,13 +1,3 @@
-2.5.0 (2026-07-27)
--------------------
-
-*Changes*
-- Add RSA key-pair authentication support for Snowflake connections
-    - New optional settings: `private_key` (PEM string), `private_key_path`, `private_key_passphrase`
-    - `password` is now optional when a private key is provided
-    - When both password and private key are set, key-pair auth is preferred
-- Add `cryptography>=3.4.8` dependency for PEM → DER PKCS8 key conversion
-
 2.4.0 (2026-01-10)
 -------------------
 
