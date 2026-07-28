@@ -143,20 +143,6 @@ Running the the target connector requires a `config.json` file. Example with the
    }
    ```
 
-Example with RSA key-pair authentication (preferred; omit `password`):
-
-   ```json
-   {
-     "account": "rtxxxxx.eu-central-1",
-     "dbname": "database_name",
-     "user": "my_user",
-     "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----",
-     "warehouse": "my_virtual_warehouse",
-     "file_format": "snowflake_file_format_object_name",
-     "default_target_schema": "my_target_schema"
-   }
-   ```
-
 Full list of options in `config.json`:
 
 | Property                            | Type    | Required?  | Description                                                   |
@@ -164,10 +150,7 @@ Full list of options in `config.json`:
 | account                             | String  | Yes        | Snowflake account name (i.e. rtXXXXX.eu-central-1)            |
 | dbname                              | String  | Yes        | Snowflake Database name                                       |
 | user                                | String  | Yes        | Snowflake User                                                |
-| password                            | String  | No*        | Snowflake Password. Required unless `private_key` or `private_key_path` is set. |
-| private_key                         | String  | No*        | PEM-encoded RSA private key string for key-pair auth. Preferred over password when both are set. |
-| private_key_path                    | String  | No*        | Path to a PEM private key file. Used when `private_key` is not set. |
-| private_key_passphrase              | String  | No         | Passphrase for an encrypted private key.                      |
+| password                            | String  | Yes        | Snowflake Password                                            |
 | warehouse                           | String  | Yes        | Snowflake virtual warehouse name                              |
 | role                                | String  | No         | Snowflake role to use. If not defined then the user's default role will be used |
 | aws_access_key_id                   | String  | No         | S3 Access Key Id. If not provided, `AWS_ACCESS_KEY_ID` environment variable or IAM role will be used |
