@@ -1,10 +1,28 @@
 import json
+import tempfile
 import unittest
 
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 from unittest.mock import patch, call
 
 from target_snowflake import db_sync
 from target_snowflake.exceptions import PrimaryKeyNotFoundException
+
+
+def _generate_pem_private_key(passphrase=None):
+    """Generate a PEM-encoded RSA private key for unit tests."""
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    encryption = (
+        serialization.BestAvailableEncryption(passphrase)
+        if passphrase
+        else serialization.NoEncryption()
+    )
+    return key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=encryption,
+    )
 
 
 class TestDBSync(unittest.TestCase):
@@ -91,6 +109,92 @@ class TestDBSync(unittest.TestCase):
         config_with_archive_load_files = minimal_config.copy()
         config_with_archive_load_files['archive_load_files'] = True
         self.assertGreater(len(validator(config_with_external_stage)), 0)
+
+        # Configuration without password or private_key should fail
+        config_without_auth = minimal_config.copy()
+        config_without_auth.pop('password')
+        self.assertGreater(len(validator(config_without_auth)), 0)
+
+        # Configuration with private_key PEM instead of password should pass
+        config_with_private_key = minimal_config.copy()
+        config_with_private_key.pop('password')
+        config_with_private_key['private_key'] = _generate_pem_private_key().decode()
+        self.assertEqual(len(validator(config_with_private_key)), 0)
+
+        # Configuration with private_key_path instead of password should pass
+        with tempfile.NamedTemporaryFile(mode='wb', delete=False) as key_file:
+            key_file.write(_generate_pem_private_key())
+            key_path = key_file.name
+        config_with_private_key_path = minimal_config.copy()
+        config_with_private_key_path.pop('password')
+        config_with_private_key_path['private_key_path'] = key_path
+        self.assertEqual(len(validator(config_with_private_key_path)), 0)
+
+    def test_get_private_key_bytes_from_pem_string(self):
+        pem = _generate_pem_private_key()
+        private_key_bytes = db_sync.get_private_key_bytes({'private_key': pem.decode()})
+        self.assertIsInstance(private_key_bytes, bytes)
+        self.assertTrue(private_key_bytes.startswith(b'\x30'))  # DER SEQUENCE
+
+    def test_get_private_key_bytes_from_path(self):
+        pem = _generate_pem_private_key()
+        with tempfile.NamedTemporaryFile(mode='wb', delete=False) as key_file:
+            key_file.write(pem)
+            key_path = key_file.name
+        private_key_bytes = db_sync.get_private_key_bytes({'private_key_path': key_path})
+        self.assertIsInstance(private_key_bytes, bytes)
+
+    def test_get_private_key_bytes_with_passphrase(self):
+        passphrase = b'secret-pass'
+        pem = _generate_pem_private_key(passphrase=passphrase)
+        private_key_bytes = db_sync.get_private_key_bytes({
+            'private_key': pem.decode(),
+            'private_key_passphrase': passphrase.decode(),
+        })
+        self.assertIsInstance(private_key_bytes, bytes)
+
+    def test_get_private_key_bytes_none_without_key(self):
+        self.assertIsNone(db_sync.get_private_key_bytes({'password': 'dummy'}))
+
+    @patch('target_snowflake.db_sync.snowflake.connector.connect')
+    def test_open_connection_uses_private_key_over_password(self, mock_connect):
+        pem = _generate_pem_private_key().decode()
+        config = {
+            'account': 'dummy-account',
+            'dbname': 'dummy-db',
+            'user': 'dummy-user',
+            'password': 'should-be-ignored',
+            'private_key': pem,
+            'warehouse': 'dummy-wh',
+            'default_target_schema': 'dummy-schema',
+            'file_format': 'dummy-format',
+        }
+        dbsync = db_sync.DbSync(config)
+        dbsync.open_connection()
+
+        kwargs = mock_connect.call_args.kwargs
+        self.assertIn('private_key', kwargs)
+        self.assertNotIn('password', kwargs)
+        self.assertEqual(kwargs['user'], 'dummy-user')
+        self.assertEqual(kwargs['account'], 'dummy-account')
+
+    @patch('target_snowflake.db_sync.snowflake.connector.connect')
+    def test_open_connection_uses_password_without_private_key(self, mock_connect):
+        config = {
+            'account': 'dummy-account',
+            'dbname': 'dummy-db',
+            'user': 'dummy-user',
+            'password': 'dummy-password',
+            'warehouse': 'dummy-wh',
+            'default_target_schema': 'dummy-schema',
+            'file_format': 'dummy-format',
+        }
+        dbsync = db_sync.DbSync(config)
+        dbsync.open_connection()
+
+        kwargs = mock_connect.call_args.kwargs
+        self.assertEqual(kwargs['password'], 'dummy-password')
+        self.assertNotIn('private_key', kwargs)
 
     def test_column_type_mapping(self):
         """Test JSON type to Snowflake column type mappings"""
