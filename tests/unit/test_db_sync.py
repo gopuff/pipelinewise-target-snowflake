@@ -156,8 +156,10 @@ class TestDBSync(unittest.TestCase):
     def test_get_private_key_bytes_none_without_key(self):
         self.assertIsNone(db_sync.get_private_key_bytes({'password': 'dummy'}))
 
+    @patch('target_snowflake.db_sync.DbSync.query')
     @patch('target_snowflake.db_sync.snowflake.connector.connect')
-    def test_open_connection_uses_private_key_over_password(self, mock_connect):
+    def test_open_connection_uses_private_key_over_password(self, mock_connect, query_patch):
+        query_patch.return_value = [{'type': 'CSV'}]
         pem = _generate_pem_private_key().decode()
         config = {
             'account': 'dummy-account',
@@ -178,8 +180,10 @@ class TestDBSync(unittest.TestCase):
         self.assertEqual(kwargs['user'], 'dummy-user')
         self.assertEqual(kwargs['account'], 'dummy-account')
 
+    @patch('target_snowflake.db_sync.DbSync.query')
     @patch('target_snowflake.db_sync.snowflake.connector.connect')
-    def test_open_connection_uses_password_without_private_key(self, mock_connect):
+    def test_open_connection_uses_password_without_private_key(self, mock_connect, query_patch):
+        query_patch.return_value = [{'type': 'CSV'}]
         config = {
             'account': 'dummy-account',
             'dbname': 'dummy-db',
