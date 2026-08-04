@@ -38,6 +38,11 @@ class TestIntegration(unittest.TestCase):
 
     def setUp(self):
         self.config = test_utils.get_test_config()
+        if not test_utils.has_integration_credentials(self.config):
+            self.skipTest(
+                'Snowflake integration credentials are not configured '
+                '(set TARGET_SNOWFLAKE_* env vars, including password or private_key).'
+            )
         self.snowflake = DbSync(self.config)
 
         # Drop target schema
