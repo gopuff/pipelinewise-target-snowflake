@@ -18,6 +18,7 @@ def get_db_config():
     config['dbname'] = os.environ.get('TARGET_SNOWFLAKE_DBNAME')
     config['user'] = os.environ.get('TARGET_SNOWFLAKE_USER')
     config['password'] = os.environ.get('TARGET_SNOWFLAKE_PASSWORD')
+    config['private_key'] = os.environ.get('TARGET_SNOWFLAKE_PRIVATE_KEY')
     config['warehouse'] = os.environ.get('TARGET_SNOWFLAKE_WAREHOUSE')
     config['default_target_schema'] = os.environ.get("TARGET_SNOWFLAKE_SCHEMA")
     config['stage'] = os.environ.get("TARGET_SNOWFLAKE_STAGE")
@@ -45,6 +46,15 @@ def get_db_config():
     config['validate_records'] = None
 
     return config
+
+
+def has_integration_credentials(config=None):
+    """Return True when enough env-backed config exists to run integration tests."""
+    config = config or get_db_config()
+    required = ('account', 'dbname', 'user', 'warehouse', 'file_format', 'default_target_schema')
+    if any(not config.get(key) for key in required):
+        return False
+    return bool(config.get('password') or config.get('private_key') or config.get('private_key_path'))
 
 
 def get_test_config():

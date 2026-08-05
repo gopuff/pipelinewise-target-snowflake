@@ -11,22 +11,26 @@ jobs:
     name: Linting and Testing
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        python-version: [ 3.7, 3.8, 3.9 ]
+        # 3.7 is no longer available on GitHub-hosted runners.
+        python-version: [ "3.8", "3.9", "3.10", "3.12" ]
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Setup virtual environment
         run: make venv
 
+      # pylint>=3.3 (needed for R0917) does not install on Python 3.8
       - name: Pylinting
+        if: matrix.python-version != '3.8'
         run: make pylint
 
       - name: Unit Tests
@@ -38,17 +42,17 @@ jobs:
     environment: ci_tests
     strategy:
       matrix:
-        python-version: [ 3.8 ]
+        python-version: [ "3.12" ]
     concurrency:
       group: integration_tests-${{ github.head_ref }}
       cancel-in-progress: true
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -56,12 +60,12 @@ jobs:
         run: make venv
 
       - name: Integration tests
-        run: make integration_test
         env:
           TARGET_SNOWFLAKE_ACCOUNT: ${{ secrets.TARGET_SNOWFLAKE_ACCOUNT }}
           TARGET_SNOWFLAKE_DBNAME: ${{ secrets.TARGET_SNOWFLAKE_DBNAME }}
           TARGET_SNOWFLAKE_USER: ${{ secrets.TARGET_SNOWFLAKE_USER }}
           TARGET_SNOWFLAKE_PASSWORD: ${{ secrets.TARGET_SNOWFLAKE_PASSWORD }}
+          TARGET_SNOWFLAKE_PRIVATE_KEY: ${{ secrets.TARGET_SNOWFLAKE_PRIVATE_KEY }}
           TARGET_SNOWFLAKE_WAREHOUSE: ${{ secrets.TARGET_SNOWFLAKE_WAREHOUSE }}
           TARGET_SNOWFLAKE_SCHEMA: ${{ secrets.TARGET_SNOWFLAKE_SCHEMA }}
           TARGET_SNOWFLAKE_AWS_ACCESS_KEY: ${{ secrets.TARGET_SNOWFLAKE_AWS_ACCESS_KEY }}
@@ -72,3 +76,10 @@ jobs:
           TARGET_SNOWFLAKE_FILE_FORMAT_CSV: ${{ secrets.TARGET_SNOWFLAKE_FILE_FORMAT_CSV }}
           TARGET_SNOWFLAKE_FILE_FORMAT_PARQUET: ${{ secrets.TARGET_SNOWFLAKE_FILE_FORMAT_PARQUET }}
           CLIENT_SIDE_ENCRYPTION_MASTER_KEY: ${{ secrets.TARGET_SNOWFLAKE_CLIENT_SIDE_ENCRYPTION_MASTER_KEY }}
+        run: |
+          . ./venv/bin/activate
+          if ! python -c "from tests.integration.utils import has_integration_credentials; import sys; sys.exit(0 if has_integration_credentials() else 1)"; then
+            echo "::notice::Skipping integration tests — Snowflake credentials not configured in ci_tests."
+            exit 0
+          fi
+          make integration_test
