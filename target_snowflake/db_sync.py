@@ -38,7 +38,13 @@ def get_private_key_bytes(connection_config: Dict) -> Optional[bytes]:
         )
 
     if private_key:
-        pem_bytes = private_key.encode() if isinstance(private_key, str) else private_key
+        if isinstance(private_key, str):
+            # Env/sealed secrets often store PEM with literal "\n" instead of real newlines.
+            if '\\n' in private_key and '\n' not in private_key:
+                private_key = private_key.replace('\\n', '\n')
+            pem_bytes = private_key.encode()
+        else:
+            pem_bytes = private_key
     else:
         with open(private_key_path, 'rb') as key_file:
             pem_bytes = key_file.read()
@@ -46,11 +52,18 @@ def get_private_key_bytes(connection_config: Dict) -> Optional[bytes]:
     passphrase = connection_config.get('private_key_passphrase')
     password = passphrase.encode() if passphrase else None
 
-    private_key_obj = serialization.load_pem_private_key(
-        pem_bytes,
-        password=password,
-        backend=default_backend(),
-    )
+    try:
+        private_key_obj = serialization.load_pem_private_key(
+            pem_bytes,
+            password=password,
+            backend=default_backend(),
+        )
+    except ValueError as exc:
+        raise ValueError(
+            "Failed to load Snowflake private key. Ensure private_key is a valid PEM string "
+            "(with real newlines or literal \\n) and private_key_passphrase is correct if set."
+        ) from exc
+
     return private_key_obj.private_bytes(
         encoding=serialization.Encoding.DER,
         format=serialization.PrivateFormat.PKCS8,

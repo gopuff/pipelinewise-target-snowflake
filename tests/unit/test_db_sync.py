@@ -136,6 +136,19 @@ class TestDBSync(unittest.TestCase):
         self.assertIsInstance(private_key_bytes, bytes)
         self.assertTrue(private_key_bytes.startswith(b'\x30'))  # DER SEQUENCE
 
+    def test_get_private_key_bytes_from_escaped_pem_string(self):
+        pem = _generate_pem_private_key().decode()
+        escaped_pem = pem.replace('\n', '\\n')
+        private_key_bytes = db_sync.get_private_key_bytes({'private_key': escaped_pem})
+        self.assertIsInstance(private_key_bytes, bytes)
+        self.assertTrue(private_key_bytes.startswith(b'\x30'))
+
+    def test_get_private_key_bytes_invalid_pem_raises_clear_error(self):
+        with self.assertRaises(ValueError) as ctx:
+            db_sync.get_private_key_bytes({'private_key': 'not-a-pem-key'})
+        self.assertIn('Failed to load Snowflake private key', str(ctx.exception))
+        self.assertNotIn('not-a-pem-key', str(ctx.exception))
+
     def test_get_private_key_bytes_from_path(self):
         pem = _generate_pem_private_key()
         with tempfile.NamedTemporaryFile(mode='wb', delete=False) as key_file:
