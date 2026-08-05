@@ -75,12 +75,9 @@ jobs:
           TARGET_SNOWFLAKE_FILE_FORMAT_PARQUET: ${{ secrets.TARGET_SNOWFLAKE_FILE_FORMAT_PARQUET }}
           CLIENT_SIDE_ENCRYPTION_MASTER_KEY: ${{ secrets.TARGET_SNOWFLAKE_CLIENT_SIDE_ENCRYPTION_MASTER_KEY }}
         run: |
-          if [ -z "${TARGET_SNOWFLAKE_ACCOUNT}" ] || [ -z "${TARGET_SNOWFLAKE_DBNAME}" ] || [ -z "${TARGET_SNOWFLAKE_USER}" ]; then
-            echo "Skipping integration tests: Snowflake credentials are not configured in the ci_tests environment."
-            exit 0
-          fi
-          if [ -z "${TARGET_SNOWFLAKE_PASSWORD}" ] && [ -z "${TARGET_SNOWFLAKE_PRIVATE_KEY}" ]; then
-            echo "Skipping integration tests: neither TARGET_SNOWFLAKE_PASSWORD nor TARGET_SNOWFLAKE_PRIVATE_KEY is set."
+          . ./venv/bin/activate
+          if ! python -c "from tests.integration.utils import has_integration_credentials; import sys; sys.exit(0 if has_integration_credentials() else 1)"; then
+            echo "::notice::Skipping integration tests — Snowflake credentials not configured in ci_tests."
             exit 0
           fi
           make integration_test
