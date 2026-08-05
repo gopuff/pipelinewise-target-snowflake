@@ -28,7 +28,9 @@ jobs:
       - name: Setup virtual environment
         run: make venv
 
+      # pylint>=3.3 (needed for R0917) does not install on Python 3.8
       - name: Pylinting
+        if: matrix.python-version != '3.8'
         run: make pylint
 
       - name: Unit Tests

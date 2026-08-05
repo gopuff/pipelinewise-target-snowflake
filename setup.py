@@ -33,8 +33,8 @@ setup(name="pipelinewise-target-snowflake",
       ],
       extras_require={
           "test": [
-              # R0917 (too-many-positional-arguments) exists only in pylint >= 3.3
-              "pylint>=3.3,<4.0",
+              # R0917 exists only in pylint >= 3.3; that line requires Python >= 3.9
+              "pylint>=3.3,<4.0; python_version>='3.9'",
               'pytest==7.4.0',
               'pytest-cov==3.0.0',
               "python-dotenv>=0.19,<1.1"
