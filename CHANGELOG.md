@@ -1,3 +1,12 @@
+Unreleased
+-------------------
+
+*Changes*
+- CI runs pylint and unit tests on Python 3.12 and 3.13, on current actions. The integration job is removed: this
+  repo has no Snowflake credentials, so it could never pass.
+- Remove the PyPI publish workflow and upstream's CODEOWNERS. This fork is installed from git tags.
+- `setup.py` author and URL point at the gopuff fork.
+
 2.5.0 (2026-07-27)
 -------------------
 

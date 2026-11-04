@@ -253,6 +253,23 @@ Full list of options in `config.json`:
   pylint target_snowflake
 ```
 
+### Releasing
+
+This fork is installed from git tags (`pip install git+https://github.com/gopuff/pipelinewise-target-snowflake.git@vX.Y.Z`),
+never from PyPI. Versions continue from upstream using semver: minor for behavior changes, patch for fixes. New tags
+use a `v` prefix, like the gopuff tap forks; `2.5.0` predates that.
+
+1. In the PR with the change, bump `version` in `setup.py` and add a `CHANGELOG.md` entry.
+2. Merge once CI passes. CI runs pylint and unit tests only; run the integration tests locally against a dev
+   Snowflake account for changes to loading or SQL.
+3. Tag the merge commit and push the tag:
+```
+  git tag -a vX.Y.Z -m "<summary>" <merge commit>
+  git push origin vX.Y.Z
+```
+
+Tags are immutable: never move or delete one that has been pushed. Ship a fix as a new patch version instead.
+
 ## License
 
 Apache License Version 2.0
